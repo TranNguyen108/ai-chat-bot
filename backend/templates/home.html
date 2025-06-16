@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat AI Backend</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5rem;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            display: inline-block;
+            margin-bottom: 30px;
+            font-weight: bold;
+        }
+        .links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .link-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #333;
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: 2px solid transparent;
+        }
+        .link-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+        .link-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        .link-desc {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .api-info {
+            background: #e3f2fd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 30px;
+            text-align: left;
+        }
+        .api-endpoint {
+            font-family: 'Courier New', monospace;
+            background: #263238;
+            color: #4CAF50;
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Chat AI Backend</h1>
+        <p class="subtitle">Django API Server với Google Gemini AI</p>
+        <div class="status">✅ Server đang chạy</div>
+        
+        <div class="links">
+            <a href="/admin/" class="link-card">
+                <div class="link-title">🔧 Admin Panel</div>
+                <div class="link-desc">Quản lý cuộc trò chuyện và tin nhắn</div>
+            </a>
+            <a href="http://localhost:5174/" class="link-card" target="_blank">
+                <div class="link-title">💬 Chat App</div>
+                <div class="link-desc">Giao diện người dùng React</div>
+            </a>
+            <a href="/api/conversations/" class="link-card">
+                <div class="link-title">📋 API Conversations</div>
+                <div class="link-desc">Danh sách cuộc trò chuyện</div>
+            </a>
+        </div>
+
+        <div class="api-info">
+            <h3>📡 API Endpoints</h3>
+            <div><span class="api-endpoint">POST /api/chat/</span> - Gửi tin nhắn chat</div>
+            <div><span class="api-endpoint">GET /api/conversations/</span> - Lấy danh sách cuộc trò chuyện</div>
+            <div><span class="api-endpoint">GET /api/conversations/{id}/</span> - Chi tiết cuộc trò chuyện</div>
+        </div>
+    </div>
+</body>
+</html>

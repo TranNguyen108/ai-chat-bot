@@ -1,0 +1,9 @@
+{
+    // Python interpreter settings
+    "python.pythonPath": "C:\\Users\\DELL\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\\python.exe",
+    "python.defaultInterpreterPath": "C:\\Users\\DELL\\AppData\\Local\\Microsoft\\WindowsApps\\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\\python.exe",
+    "python.analysis.autoSearchPaths": true,
+    "python.analysis.autoImportCompletions": true,
+    "python.terminal.activateEnvironment": false,
+    "python.analysis.stubPath": "./backend"
+}
