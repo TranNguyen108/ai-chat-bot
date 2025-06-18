@@ -50,7 +50,7 @@ const Sidebar = ({ conversations, activeConversationId, onSelectConversation, on
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center mb-4">
           <SparklesIcon className="w-8 h-8 text-blue-600 mr-2" />
-          <h1 className="text-xl font-bold text-gradient-primary">AnyChat</h1>
+          <h1 className="text-xl font-bold text-gradient-primary">ChatAI</h1>
         </div>
         
         <button 
