@@ -1,3 +1,5 @@
+// src/components/ChatInput.jsx
+
 import React, { useState } from 'react';
 import { PaperAirplaneIcon } from '@heroicons/react/24/solid';
 
@@ -13,33 +15,38 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 p-4">
-      <form onSubmit={handleSubmit} className="flex items-center space-x-3">
-        <div className="flex-1 relative">
-          <input
-            type="text"
+    <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+      <div className="max-w-4xl mx-auto">
+        <form onSubmit={handleSubmit} className="relative">
+          <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Send your message"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder="Send a message... (Shift + Enter for new line)"
             disabled={isLoading}
-            className="input-field pr-12 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full p-3 pr-16 text-sm text-gray-800 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed resize-none"
+            rows={1}
+            style={{ maxHeight: '120px' }}
           />
           <button
             type="submit"
             disabled={!message.trim() || isLoading}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-blue-600 hover:text-blue-700 disabled:text-gray-400 disabled:cursor-not-allowed smooth-transition"
+            className="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition-all duration-200"
           >
             <PaperAirplaneIcon className="w-5 h-5" />
           </button>
-        </div>
-      </form>
-      
-      {isLoading && (
-        <div className="mt-2 text-sm text-gray-500 flex items-center">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-          AI is thinking...
-        </div>
-      )}
+        </form>
+        {isLoading && (
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            AI is thinking...
+          </p>
+        )}
+      </div>
     </div>
   );
 };
