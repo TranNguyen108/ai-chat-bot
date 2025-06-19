@@ -1,0 +1,38 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1 style="color:#4f8cff; font-size:2rem; margin-bottom:18px;">Gửi thông báo đến người dùng</h1>
+<div class="form-card">
+    <form method="post" action="/admin/trang-mau-2/">
+        {% csrf_token %}
+        <label for="message">Nội dung thông báo</label>
+        <input type="text" name="message" id="message" required>
+        <button type="submit" class="button">Gửi thông báo</button>
+    </form>
+</div>
+<h2 style="color:#4f8cff; font-size:1.3rem; margin:32px 0 12px 0;">Danh sách thông báo</h2>
+<table class="adminlist">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nội dung</th>
+            <th>Thời gian</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for n in notifications %}
+        <tr>
+            <td>{{ n.id }}</td>
+            <td>{{ n.message }}</td>
+            <td>{{ n.created_at }}</td>
+            <td>
+                <form method="post" action="/admin/trang-mau-2/delete/{{ n.id }}/" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button" style="background:#ff5e57; color:#fff; padding:6px 14px; font-size:0.95rem;">Xoá</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

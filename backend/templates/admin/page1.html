@@ -1,0 +1,44 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1 style="color:#4f8cff; font-size:2rem; margin-bottom:18px;">Quản lý người dùng Supabase</h1>
+<div class="form-card">
+    <form method="post" action="/admin/trang-mau-1/">
+        {% csrf_token %}
+        <label for="email">Email</label>
+        <input type="email" name="email" id="email" required>
+        <label for="password">Mật khẩu</label>
+        <input type="password" name="password" id="password" required>
+        <label for="role">Vai trò</label>
+        <select name="role" id="role">
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+        </select>
+        <button type="submit" class="button">Thêm người dùng</button>
+    </form>
+</div>
+<table class="adminlist">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Hành động</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>
+                <form method="post" action="/admin/trang-mau-1/delete/{{ user.id }}/" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="button" style="background:#ff5e57; color:#fff; padding:6px 14px; font-size:0.95rem;">Xoá</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

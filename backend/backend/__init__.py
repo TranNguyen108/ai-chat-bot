@@ -1,0 +1,1 @@
+# XÓA dòng import supabase_admin ở đây để tránh lỗi AppRegistryNotReady

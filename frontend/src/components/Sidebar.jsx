@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import { 
   PlusIcon, 
   ChatBubbleLeftIcon,
-  UserIcon,
-  ArrowRightOnRectangleIcon,
   PencilIcon,
   TrashIcon
 } from '@heroicons/react/24/outline';
@@ -17,8 +15,8 @@ const Sidebar = ({
     activeConversationId, 
     onSelectConversation, 
     onNewChat, 
-    user, 
-    onLogout, 
+    // user, // XOÁ user khỏi Sidebar
+    // onLogout, // XOÁ onLogout khỏi Sidebar
     onDeleteConversation, 
     onRenameConversation 
 }) => {
@@ -155,29 +153,6 @@ const Sidebar = ({
             <p className="text-xs text-gray-400">Start a new chat to begin.</p>
           </div>
         )}
-      </div>
-
-      {/* User Info */}
-      <div className="p-4 border-t border-gray-200 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center min-w-0">
-            <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <UserIcon className="w-5 h-5 text-blue-600" />
-            </div>
-            <div className="ml-3 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">
-                {user?.name || user?.email || 'Guest User'}
-              </p>
-            </div>
-          </div>
-          <button
-            className="p-2 text-gray-500 hover:text-red-600 hover:bg-gray-200 rounded-lg transition-colors"
-            title="Đăng xuất"
-            onClick={onLogout}
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5" />
-          </button>
-        </div>
       </div>
     </div>
   );

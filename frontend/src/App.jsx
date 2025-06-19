@@ -7,6 +7,7 @@ import ChatHeader from './components/ChatHeader';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import LoginRegister from './LoginRegister';
+import UserProfilePage from "./components/UserProfilePage";
 import { SparklesIcon } from '@heroicons/react/24/outline';
 
 const App = () => {
@@ -19,6 +20,9 @@ const App = () => {
   const [conversations, setConversations] = useState([]);
   const [activeConversationId, setActiveConversationId] = useState(null);
   const [currentTitle, setCurrentTitle] = useState('New Chat');
+  const [showUserPage, setShowUserPage] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const messagesEndRef = useRef(null);
 
   // MỚI: State để quản lý trạng thái của Sidebar
@@ -58,6 +62,19 @@ const App = () => {
       localStorage.removeItem('chatai_user');
     }
   }, [user]);
+
+  useEffect(() => {
+    // Lấy thông báo từ backend admin
+    const fetchNotifications = async () => {
+      try {
+        const res = await axios.get("http://127.0.0.1:8000/api/v2/notifications/");
+        setNotifications(res.data.notifications || []);
+      } catch (e) {
+        setNotifications([]);
+      }
+    };
+    fetchNotifications();
+  }, []);
 
   const fetchConversations = async () => {
     try {
@@ -210,24 +227,31 @@ const App = () => {
   if (!user) {
     return <LoginRegister onAuth={setUser} />;
   }
+  if (showUserPage) {
+    return (
+      <UserProfilePage user={user} setUser={setUser} onClose={() => setShowUserPage(false)} />
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans">
       <Sidebar
-        isSidebarOpen={isSidebarOpen} // MỚI
+        isSidebarOpen={isSidebarOpen}
         conversations={conversations}
         activeConversationId={activeConversationId}
         onSelectConversation={(id) => setActiveConversationId(id)}
         onNewChat={startNewChat}
-        user={user}
-        onLogout={handleLogout}
         onDeleteConversation={deleteConversationHistory}
         onRenameConversation={renameConversation}
       />
       <main className="flex-1 flex flex-col transition-all duration-300">
         <ChatHeader
           title={currentTitle}
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} // MỚI
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onUserClick={() => setShowUserPage(true)}
+          onLogout={handleLogout}
+          notifications={notifications}
+          onBellClick={() => setShowNotifications(true)}
         />
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
           {messages.length === 0 && !isLoading ? (

@@ -17,9 +17,10 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from .views import HomeView
+from backend.supabase_admin import custom_admin_site
 
 urlpatterns = [
+    path('admin/', include((custom_admin_site.get_urls(), 'custom-admin'))),
     path('', HomeView.as_view(), name='home'),
-    path('admin/', admin.site.urls),
     path('api/v2/', include('backend.api_urls')),
 ]
