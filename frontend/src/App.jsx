@@ -1,3 +1,5 @@
+// src/App.jsx
+
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import Sidebar from './components/Sidebar';
@@ -5,6 +7,7 @@ import ChatHeader from './components/ChatHeader';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import LoginRegister from './LoginRegister';
+import { SparklesIcon } from '@heroicons/react/24/outline';
 
 const App = () => {
   const [user, setUser] = useState(() => {
@@ -18,6 +21,9 @@ const App = () => {
   const [currentTitle, setCurrentTitle] = useState('New Chat');
   const messagesEndRef = useRef(null);
 
+  // MỚI: State để quản lý trạng thái của Sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
   const API_BASE_URL = 'http://127.0.0.1:8000/api/v2';
 
   const scrollToBottom = () => {
@@ -26,17 +32,25 @@ const App = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isLoading]);
 
   useEffect(() => {
     if (user) fetchConversations();
   }, [user]);
 
   useEffect(() => {
-    if (user && activeConversationId) fetchHistory();
+    if (user && activeConversationId) {
+        fetchHistory();
+        const activeConv = conversations.find(c => c.id === activeConversationId);
+        if (activeConv) {
+            setCurrentTitle(activeConv.title);
+        }
+    } else {
+        setMessages([]);
+        setCurrentTitle('New Chat');
+    }
   }, [user, activeConversationId]);
 
-  // Khi user thay đổi, lưu vào localStorage
   useEffect(() => {
     if (user) {
       localStorage.setItem('chatai_user', JSON.stringify(user));
@@ -48,10 +62,11 @@ const App = () => {
   const fetchConversations = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/conversations/${user.user_id}/`);
-      setConversations(res.data.conversations || []);
-      if (res.data.conversations && res.data.conversations.length > 0) {
-        setActiveConversationId(res.data.conversations[0].id);
-        setCurrentTitle(res.data.conversations[0].title || 'New Chat');
+      const fetchedConversations = res.data.conversations || [];
+      setConversations(fetchedConversations);
+      if (fetchedConversations.length > 0 && !activeConversationId) {
+        setActiveConversationId(fetchedConversations[0].id);
+        setCurrentTitle(fetchedConversations[0].title || 'New Chat');
       }
     } catch (error) {
       setConversations([]);
@@ -59,6 +74,8 @@ const App = () => {
   };
 
   const fetchHistory = async () => {
+    if (!activeConversationId) return;
+    setIsLoading(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/history/${user.user_id}/${activeConversationId}/`);
       setMessages(res.data.history.map(msg => ({
@@ -69,21 +86,26 @@ const App = () => {
       })));
     } catch (error) {
       setMessages([]);
+    } finally {
+        setIsLoading(false);
     }
   };
 
   const sendMessage = async (messageText) => {
-    if (!messageText.trim() || isLoading) return;
+    if (!messageText.trim()) return;
+
     let conversationId = activeConversationId;
+    const isNewChat = !conversationId;
+    
     // Nếu chưa có conversation, tự động tạo mới
-    if (!conversationId) {
+    if (isNewChat) {
       try {
-        const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: 'New Chat' });
+        const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: messageText.substring(0, 30) });
         if (res.data && res.data.conversation) {
           conversationId = res.data.conversation.id;
           setActiveConversationId(conversationId);
           setCurrentTitle(res.data.conversation.title);
-          fetchConversations();
+          await fetchConversations(); // Cập nhật lại danh sách conversations
         } else {
           throw new Error('Không tạo được đoạn chat mới');
         }
@@ -97,6 +119,7 @@ const App = () => {
         return;
       }
     }
+
     const userMessage = {
       id: Date.now(),
       content: messageText,
@@ -105,6 +128,7 @@ const App = () => {
     };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+
     try {
       const res = await axios.post(`${API_BASE_URL}/history/${user.user_id}/${conversationId}/`, {
         message: messageText,
@@ -112,13 +136,11 @@ const App = () => {
       });
       if (res.data && res.data.ai_message) {
         setMessages(prev => [...prev, {
-          id: Date.now() + 1,
+          id: res.data.ai_message.id || Date.now() + 1,
           content: res.data.ai_message.content,
           type: 'ai',
           timestamp: new Date().toISOString()
         }]);
-      } else {
-        fetchHistory();
       }
     } catch (error) {
       setMessages(prev => [...prev, {
@@ -129,47 +151,41 @@ const App = () => {
       }]);
     } finally {
       setIsLoading(false);
+      if(isNewChat) await fetchConversations();
     }
   };
 
-  const startNewChat = async () => {
-    try {
-      const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: 'New Chat' });
-      if (res.data && res.data.conversation) {
-        setActiveConversationId(res.data.conversation.id);
-        setCurrentTitle(res.data.conversation.title);
-        setMessages([]);
-        fetchConversations();
-      }
-    } catch (error) {
-      // fallback: vẫn tạo session local nếu lỗi
-      setMessages([]);
-      setCurrentTitle('New Chat');
-    }
+  const startNewChat = () => {
+    setActiveConversationId(null);
+    setMessages([]);
+    setCurrentTitle('New Chat');
+    if (!isSidebarOpen) setIsSidebarOpen(true);
   };
-
+  
   const handleLogout = () => {
     setUser(null);
     setMessages([]);
     setConversations([]);
     setActiveConversationId(null);
     setCurrentTitle('New Chat');
-    localStorage.removeItem('chatai_user');
   };
 
   const deleteConversationHistory = async (conversationId) => {
     if (!window.confirm('Bạn có chắc muốn xoá toàn bộ lịch sử chat của đoạn này?')) return;
     try {
       await axios.delete(`${API_BASE_URL}/history/${user.user_id}/${conversationId}/`);
-      // Sau khi xoá, reload lại danh sách conversation và chuyển sang đoạn chat khác (nếu có)
-      fetchConversations();
-      if (conversations.length > 1) {
-        const nextConv = conversations.find(c => c.id !== conversationId);
-        setActiveConversationId(nextConv?.id || null);
-      } else {
-        setActiveConversationId(null);
-        setMessages([]);
+      
+      const newConversations = conversations.filter(c => c.id !== conversationId);
+      setConversations(newConversations);
+
+      if (activeConversationId === conversationId) {
+        if (newConversations.length > 0) {
+          setActiveConversationId(newConversations[0].id);
+        } else {
+          setActiveConversationId(null);
+        }
       }
+
     } catch (error) {
       alert('Xoá lịch sử chat thất bại!');
     }
@@ -181,7 +197,11 @@ const App = () => {
         conversation_id: conversationId,
         title: newTitle
       });
-      fetchConversations();
+      // Cập nhật lại title trong state để giao diện phản hồi ngay lập tức
+      setConversations(conversations.map(c => c.id === conversationId ? { ...c, title: newTitle } : c));
+      if (activeConversationId === conversationId) {
+        setCurrentTitle(newTitle);
+      }
     } catch (error) {
       alert('Đổi tên đoạn chat thất bại!');
     }
@@ -192,34 +212,36 @@ const App = () => {
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-50 font-sans">
       <Sidebar
+        isSidebarOpen={isSidebarOpen} // MỚI
         conversations={conversations}
         activeConversationId={activeConversationId}
-        onSelectConversation={setActiveConversationId}
+        onSelectConversation={(id) => setActiveConversationId(id)}
         onNewChat={startNewChat}
         user={user}
         onLogout={handleLogout}
         onDeleteConversation={deleteConversationHistory}
         onRenameConversation={renameConversation}
       />
-      <div className="flex-1 flex flex-col">
-        <ChatHeader title={currentTitle} />
-        <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          {messages.length === 0 ? (
+      <main className="flex-1 flex flex-col transition-all duration-300">
+        <ChatHeader
+          title={currentTitle}
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} // MỚI
+        />
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
+          {messages.length === 0 && !isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.456l-3.618 1.028a.75.75 0 01-.93-.93l1.028-3.618A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
-                  </svg>
+                <div className="inline-block p-4 bg-blue-100 rounded-full mb-4">
+                  <SparklesIcon className="w-10 h-10 text-blue-600" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Start a conversation</h3>
-                <p className="text-gray-500">Send a message to begin chatting with AI</p>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-2">ChatAI</h3>
+                <p className="text-gray-500">Bắt đầu cuộc trò chuyện hoặc chọn một cuộc trò chuyện từ sidebar.</p>
               </div>
             </div>
           ) : (
-            <div className="max-w-4xl mx-auto">
+            <div className="max-w-4xl mx-auto space-y-6">
               {messages.map(message => (
                 <ChatMessage
                   key={message.id}
@@ -227,7 +249,7 @@ const App = () => {
                 />
               ))}
               {isLoading && (
-                <ChatMessage isLoading={true} />
+                <ChatMessage isLoading={true} message={{}} />
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -237,7 +259,7 @@ const App = () => {
           onSendMessage={sendMessage}
           isLoading={isLoading}
         />
-      </div>
+      </main>
     </div>
   );
 };
