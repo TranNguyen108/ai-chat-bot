@@ -2,6 +2,7 @@ from django.urls import path
 from .auth_views import RegisterView, LoginView
 from .chat_history_views import ChatHistoryView, ConversationListView
 from backend.notifications_api import notifications_api
+from backend.file_upload_api import upload_file
 
 urlpatterns = [
     path('register/', RegisterView.as_view()),
@@ -10,5 +11,6 @@ urlpatterns = [
     path('conversations/<str:user_id>/new/', ConversationListView.as_view()),
     path('history/<str:user_id>/<str:conversation_id>/', ChatHistoryView.as_view()),
     path('notifications/', notifications_api),
+    path('upload/', upload_file),
 ]
 # Các API khác dùng model Django đã được loại bỏ, chỉ còn API sử dụng Supabase.

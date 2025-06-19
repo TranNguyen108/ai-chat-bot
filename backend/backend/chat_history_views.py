@@ -48,20 +48,24 @@ class ChatHistoryView(APIView):
         # Lưu tin nhắn mới vào lịch sử và trả về phản hồi AI
         message = request.data.get('message')
         role = request.data.get('role', 'user')
-        if not message:
-            return Response({'error': 'Message required'}, status=status.HTTP_400_BAD_REQUEST)
+        media_url = request.data.get('media_url')
+        media_type = request.data.get('media_type')
+        if not message and not media_url:
+            return Response({'error': 'Message or media required'}, status=status.HTTP_400_BAD_REQUEST)
         # Lưu tin nhắn user
         supabase.table('chat_history').insert({
             'user_id': user_id,
             'conversation_id': conversation_id,
             'message': message,
-            'role': role
+            'role': role,
+            'media_url': media_url,
+            'media_type': media_type
         }).execute()
         # Gọi AI Gemini
         ai_response = ""
         try:
             model = genai.GenerativeModel('models/gemini-1.5-flash')
-            response = model.generate_content(message)
+            response = model.generate_content(message or "[file sent]")
             if hasattr(response, 'text') and response.text:
                 ai_response = response.text.strip()
             else:

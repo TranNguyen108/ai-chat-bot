@@ -108,21 +108,24 @@ const App = () => {
     }
   };
 
-  const sendMessage = async (messageText) => {
-    if (!messageText.trim()) return;
+  const sendMessage = async (input) => {
+    // input: { message, media_url, media_type } hoặc string cũ
+    let messageText = typeof input === 'string' ? input : (input.message || '');
+    let media_url = typeof input === 'object' ? input.media_url : undefined;
+    let media_type = typeof input === 'object' ? input.media_type : undefined;
+    if (!messageText.trim() && !media_url) return;
 
     let conversationId = activeConversationId;
     const isNewChat = !conversationId;
-    
     // Nếu chưa có conversation, tự động tạo mới
     if (isNewChat) {
       try {
-        const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: messageText.substring(0, 30) });
+        const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: messageText.substring(0, 30) || 'File' });
         if (res.data && res.data.conversation) {
           conversationId = res.data.conversation.id;
           setActiveConversationId(conversationId);
           setCurrentTitle(res.data.conversation.title);
-          await fetchConversations(); // Cập nhật lại danh sách conversations
+          await fetchConversations();
         } else {
           throw new Error('Không tạo được đoạn chat mới');
         }
@@ -136,20 +139,23 @@ const App = () => {
         return;
       }
     }
-
+    // Hiển thị tin nhắn user (có thể có file)
     const userMessage = {
       id: Date.now(),
       content: messageText,
       type: 'user',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      media_url,
+      media_type
     };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
-
     try {
       const res = await axios.post(`${API_BASE_URL}/history/${user.user_id}/${conversationId}/`, {
         message: messageText,
-        role: 'user'
+        role: 'user',
+        media_url,
+        media_type
       });
       if (res.data && res.data.ai_message) {
         setMessages(prev => [...prev, {

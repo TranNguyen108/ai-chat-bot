@@ -31,6 +31,12 @@ const ChatMessage = ({ message, onRegenerate, onFeedback, isLoading }) => {
     return (
       <div className="flex justify-end items-start message-enter">
         <div className="bg-blue-600 text-white rounded-lg rounded-br-none p-3 max-w-lg lg:max-w-2xl">
+          {message.media_url && message.media_type && message.media_type.startsWith('image') && (
+            <img src={message.media_url} alt="media" className="mb-2 max-h-48 rounded" />
+          )}
+          {message.media_url && message.media_type && !message.media_type.startsWith('image') && (
+            <a href={message.media_url} target="_blank" rel="noopener noreferrer" className="block text-xs underline mb-2">File đính kèm</a>
+          )}
           <p className="text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
         <div className="flex-shrink-0 w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center ml-4">
@@ -42,12 +48,18 @@ const ChatMessage = ({ message, onRegenerate, onFeedback, isLoading }) => {
 
   // Giao diện tin nhắn AI
   return (
-    <div className="flex items-start message-enter group"> {/* MỚI: Thêm class group */}
+    <div className="flex items-start message-enter group">
       <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-400 to-indigo-500 rounded-full flex items-center justify-center mr-4">
         <SparklesIcon className="w-5 h-5 text-white" />
       </div>
       <div className="flex-1">
         <div className="bg-white rounded-lg rounded-tl-none p-4 shadow-sm max-w-lg lg:max-w-2xl">
+          {message.media_url && message.media_type && message.media_type.startsWith('image') && (
+            <img src={message.media_url} alt="media" className="mb-2 max-h-48 rounded" />
+          )}
+          {message.media_url && message.media_type && !message.media_type.startsWith('image') && (
+            <a href={message.media_url} target="_blank" rel="noopener noreferrer" className="block text-xs underline mb-2">File đính kèm</a>
+          )}
           <p className="text-gray-800 text-sm whitespace-pre-wrap">{message.content}</p>
         </div>
         
