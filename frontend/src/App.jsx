@@ -4,16 +4,21 @@ import Sidebar from './components/Sidebar';
 import ChatHeader from './components/ChatHeader';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
+import LoginRegister from './LoginRegister';
 
 const App = () => {
-  const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('chatai_user');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentTitle, setCurrentTitle] = useState('Photo Generation');
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
+  const [currentTitle, setCurrentTitle] = useState('New Chat');
   const messagesEndRef = useRef(null);
 
-  const API_BASE_URL = 'http://127.0.0.1:8000/api';
+  const API_BASE_URL = 'http://127.0.0.1:8000/api/v2';
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -24,65 +29,98 @@ const App = () => {
   }, [messages]);
 
   useEffect(() => {
-    fetchConversations();
-  }, []);
+    if (user) fetchConversations();
+  }, [user]);
+
+  useEffect(() => {
+    if (user && activeConversationId) fetchHistory();
+  }, [user, activeConversationId]);
+
+  // Khi user thay đổi, lưu vào localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('chatai_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('chatai_user');
+    }
+  }, [user]);
 
   const fetchConversations = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/conversations/`);
-      setConversations(response.data.conversations);
+      const res = await axios.get(`${API_BASE_URL}/conversations/${user.user_id}/`);
+      setConversations(res.data.conversations || []);
+      if (res.data.conversations && res.data.conversations.length > 0) {
+        setActiveConversationId(res.data.conversations[0].id);
+        setCurrentTitle(res.data.conversations[0].title || 'New Chat');
+      }
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      setConversations([]);
     }
   };
 
-  const loadConversation = async (conversationId) => {
+  const fetchHistory = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/conversations/${conversationId}/`);
-      setMessages(response.data.conversation.messages);
-      setActiveConversationId(conversationId);
-      setCurrentTitle(response.data.conversation.title);
+      const res = await axios.get(`${API_BASE_URL}/history/${user.user_id}/${activeConversationId}/`);
+      setMessages(res.data.history.map(msg => ({
+        id: msg.id || Date.now() + Math.random(),
+        content: msg.message,
+        type: msg.role,
+        timestamp: msg.created_at
+      })));
     } catch (error) {
-      console.error('Error loading conversation:', error);
+      setMessages([]);
     }
-  };
-
-  const startNewChat = () => {
-    setMessages([]);
-    setActiveConversationId(null);
-    setCurrentTitle('New Chat');
   };
 
   const sendMessage = async (messageText) => {
     if (!messageText.trim() || isLoading) return;
-
+    let conversationId = activeConversationId;
+    // Nếu chưa có conversation, tự động tạo mới
+    if (!conversationId) {
+      try {
+        const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: 'New Chat' });
+        if (res.data && res.data.conversation) {
+          conversationId = res.data.conversation.id;
+          setActiveConversationId(conversationId);
+          setCurrentTitle(res.data.conversation.title);
+          fetchConversations();
+        } else {
+          throw new Error('Không tạo được đoạn chat mới');
+        }
+      } catch (error) {
+        setMessages(prev => [...prev, {
+          id: Date.now(),
+          content: 'Không thể tạo đoạn chat mới. Vui lòng thử lại.',
+          type: 'ai',
+          timestamp: new Date().toISOString()
+        }]);
+        return;
+      }
+    }
     const userMessage = {
       id: Date.now(),
       content: messageText,
       type: 'user',
       timestamp: new Date().toISOString()
     };
-
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
-
     try {
-      const response = await axios.post(`${API_BASE_URL}/chat/`, {
+      const res = await axios.post(`${API_BASE_URL}/history/${user.user_id}/${conversationId}/`, {
         message: messageText,
-        conversation_id: activeConversationId
+        role: 'user'
       });
-
-      // Add hasImage flag for demo purposes - you can modify this based on your AI response
-      const aiMessage = {
-        ...response.data.ai_message,
-        hasImage: messageText.toLowerCase().includes('cat') || messageText.toLowerCase().includes('image')
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
-      setActiveConversationId(response.data.conversation_id);
-      fetchConversations(); // Refresh conversations list
+      if (res.data && res.data.ai_message) {
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
+          content: res.data.ai_message.content,
+          type: 'ai',
+          timestamp: new Date().toISOString()
+        }]);
+      } else {
+        fetchHistory();
+      }
     } catch (error) {
-      console.error('Error sending message:', error);
       setMessages(prev => [...prev, {
         id: Date.now(),
         content: 'Sorry, there was an error processing your request. Please try again.',
@@ -94,50 +132,79 @@ const App = () => {
     }
   };
 
-  const handleTitleChange = (newTitle) => {
-    setCurrentTitle(newTitle);
-    // You can add API call here to update the conversation title
-  };
-
-  const handlePromptSubmit = (prompt) => {
-    sendMessage(prompt);
-  };
-
-  const handleRegenerate = (messageId) => {
-    // Find the message and regenerate
-    const messageIndex = messages.findIndex(msg => msg.id === messageId);
-    if (messageIndex > 0) {
-      const previousUserMessage = messages[messageIndex - 1];
-      if (previousUserMessage.type === 'user') {
-        sendMessage(previousUserMessage.content);
+  const startNewChat = async () => {
+    try {
+      const res = await axios.post(`${API_BASE_URL}/conversations/${user.user_id}/new/`, { title: 'New Chat' });
+      if (res.data && res.data.conversation) {
+        setActiveConversationId(res.data.conversation.id);
+        setCurrentTitle(res.data.conversation.title);
+        setMessages([]);
+        fetchConversations();
       }
+    } catch (error) {
+      // fallback: vẫn tạo session local nếu lỗi
+      setMessages([]);
+      setCurrentTitle('New Chat');
     }
   };
 
-  const handleFeedback = (messageId, feedbackType) => {
-    console.log(`Feedback for message ${messageId}: ${feedbackType}`);
-    // You can add API call here to save feedback
+  const handleLogout = () => {
+    setUser(null);
+    setMessages([]);
+    setConversations([]);
+    setActiveConversationId(null);
+    setCurrentTitle('New Chat');
+    localStorage.removeItem('chatai_user');
   };
+
+  const deleteConversationHistory = async (conversationId) => {
+    if (!window.confirm('Bạn có chắc muốn xoá toàn bộ lịch sử chat của đoạn này?')) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/history/${user.user_id}/${conversationId}/`);
+      // Sau khi xoá, reload lại danh sách conversation và chuyển sang đoạn chat khác (nếu có)
+      fetchConversations();
+      if (conversations.length > 1) {
+        const nextConv = conversations.find(c => c.id !== conversationId);
+        setActiveConversationId(nextConv?.id || null);
+      } else {
+        setActiveConversationId(null);
+        setMessages([]);
+      }
+    } catch (error) {
+      alert('Xoá lịch sử chat thất bại!');
+    }
+  };
+
+  const renameConversation = async (conversationId, newTitle) => {
+    try {
+      await axios.patch(`${API_BASE_URL}/conversations/${user.user_id}/`, {
+        conversation_id: conversationId,
+        title: newTitle
+      });
+      fetchConversations();
+    } catch (error) {
+      alert('Đổi tên đoạn chat thất bại!');
+    }
+  };
+
+  if (!user) {
+    return <LoginRegister onAuth={setUser} />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
       <Sidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
-        onSelectConversation={loadConversation}
+        onSelectConversation={setActiveConversationId}
         onNewChat={startNewChat}
-        user={{ name: 'Emily' }}
+        user={user}
+        onLogout={handleLogout}
+        onDeleteConversation={deleteConversationHistory}
+        onRenameConversation={renameConversation}
       />
-
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <ChatHeader
-          title={currentTitle}
-          onTitleChange={handleTitleChange}
-          onPromptSubmit={handlePromptSubmit}
-        />        {/* Messages */}
+        <ChatHeader title={currentTitle} />
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           {messages.length === 0 ? (
             <div className="flex items-center justify-center h-full">
@@ -157,8 +224,6 @@ const App = () => {
                 <ChatMessage
                   key={message.id}
                   message={message}
-                  onRegenerate={handleRegenerate}
-                  onFeedback={handleFeedback}
                 />
               ))}
               {isLoading && (
@@ -168,8 +233,6 @@ const App = () => {
             </div>
           )}
         </div>
-
-        {/* Input */}
         <ChatInput
           onSendMessage={sendMessage}
           isLoading={isLoading}

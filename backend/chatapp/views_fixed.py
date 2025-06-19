@@ -45,7 +45,7 @@ class ChatView(View):
             
             # Generate AI response using Gemini
             try:
-                model = genai.GenerativeModel('gemini-pro')
+                model = genai.GenerativeModel('models/gemini-1.5-flash')
                 response = model.generate_content(message)
                 
                 # Check if response has text

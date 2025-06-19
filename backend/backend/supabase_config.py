@@ -1,0 +1,3 @@
+# Supabase configuration for Django backend
+SUPABASE_URL = "https://hiynbilxygeubcuadalc.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpeW5iaWx4eWdldWJjdWFkYWxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwNjUzNzQsImV4cCI6MjA2NDY0MTM3NH0.62D_6zpAkHFVuNvZGilAIVe5UL2vAVkrcnpA55m2zcs"

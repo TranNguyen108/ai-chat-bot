@@ -7,7 +7,7 @@ import {
   SparklesIcon
 } from '@heroicons/react/24/outline';
 
-const Sidebar = ({ conversations, activeConversationId, onSelectConversation, onNewChat, user }) => {
+const Sidebar = ({ conversations, activeConversationId, onSelectConversation, onNewChat, user, onLogout, onDeleteConversation, onRenameConversation }) => {
   const today = new Date();
   const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -21,26 +21,81 @@ const Sidebar = ({ conversations, activeConversationId, onSelectConversation, on
     return convDate >= sevenDaysAgo && convDate.toDateString() !== today.toDateString();
   });
 
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+
+  const handleEdit = (conversation) => {
+    setEditingId(conversation.id);
+    setEditTitle(conversation.title);
+  };
+  const handleEditChange = (e) => setEditTitle(e.target.value);
+  const handleEditBlur = (conversation) => {
+    if (editTitle.trim() && editTitle !== conversation.title) {
+      onRenameConversation(conversation.id, editTitle.trim());
+    }
+    setEditingId(null);
+  };
+  const handleEditKeyDown = (e, conversation) => {
+    if (e.key === 'Enter') {
+      handleEditBlur(conversation);
+    } else if (e.key === 'Escape') {
+      setEditingId(null);
+    }
+  };
+
   const ConversationItem = ({ conversation, isActive }) => (
     <div 
-      onClick={() => onSelectConversation(conversation.id)}
       className={`flex items-center p-3 rounded-lg cursor-pointer smooth-transition message-enter ${
         isActive 
           ? 'bg-gray-200 border-l-4 border-blue-500' 
           : 'hover:bg-gray-100'
       }`}
     >
-      <ChatBubbleLeftIcon className="w-5 h-5 text-gray-500 mr-3 flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">
-          {conversation.title}
-        </p>
-        {conversation.last_message && (
-          <p className="text-xs text-gray-500 truncate">
-            {conversation.last_message}
-          </p>
-        )}
+      <div onClick={() => onSelectConversation(conversation.id)} className="flex-1 min-w-0 flex items-center">
+        <ChatBubbleLeftIcon className="w-5 h-5 text-gray-500 mr-3 flex-shrink-0" />
+        <div>
+          {editingId === conversation.id ? (
+            <input
+              className="text-lg font-semibold text-gray-900 bg-transparent border-b border-gray-300 focus:border-blue-500 focus:outline-none smooth-transition"
+              type="text"
+              value={editTitle}
+              autoFocus
+              onChange={handleEditChange}
+              onBlur={() => handleEditBlur(conversation)}
+              onKeyDown={e => handleEditKeyDown(e, conversation)}
+              maxLength={50}
+            />
+          ) : (
+            <div className="flex items-center">
+              <p
+                className="text-sm font-medium text-gray-900 truncate cursor-pointer"
+                title="Đổi tên đoạn chat"
+              >
+                {conversation.title}
+              </p>
+              <button
+                className="ml-2 px-2 py-1 text-xs text-blue-500 bg-blue-50 rounded hover:bg-blue-100"
+                title="Đổi tên đoạn chat"
+                onClick={e => { e.stopPropagation(); handleEdit(conversation); }}
+              >
+                Đổi tên
+              </button>
+            </div>
+          )}
+          {conversation.last_message && (
+            <p className="text-xs text-gray-500 truncate">
+              {conversation.last_message}
+            </p>
+          )}
+        </div>
       </div>
+      <button
+        className="ml-2 px-2 py-1 text-xs text-red-500 bg-red-50 rounded hover:bg-red-100"
+        title="Xoá lịch sử chat"
+        onClick={() => onDeleteConversation(conversation.id)}
+      >
+        Xoá
+      </button>
     </div>
   );
 
@@ -116,14 +171,22 @@ const Sidebar = ({ conversations, activeConversationId, onSelectConversation, on
             </div>
             <div className="ml-3">
               <p className="text-sm font-medium text-gray-900">
-                {user?.name || 'Emily'}
+                {user?.name || user?.email || 'Emily'}
               </p>
             </div>
           </div>
-          <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 smooth-transition focus-ring">
-            <ArrowUpIcon className="w-3 h-3 inline mr-1" />
-            Upgrade
-          </button>
+          <div className="flex flex-col items-end">
+            <button className="px-3 py-1 bg-blue-600 text-white text-xs rounded-full hover:bg-blue-700 smooth-transition focus-ring mb-2">
+              <ArrowUpIcon className="w-3 h-3 inline mr-1" />
+              Upgrade
+            </button>
+            <button
+              className="px-3 py-1 bg-gray-200 text-gray-700 text-xs rounded-full hover:bg-gray-300 smooth-transition focus-ring"
+              onClick={onLogout}
+            >
+              Đăng xuất
+            </button>
+          </div>
         </div>
       </div>
     </div>

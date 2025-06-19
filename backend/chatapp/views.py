@@ -44,7 +44,7 @@ class ChatView(View):
             )            # Generate AI response using Gemini
             try:
                 # Use Gemini 2.0 Flash - latest stable model
-                model = genai.GenerativeModel('gemini-2.0-flash-exp')
+                model = genai.GenerativeModel('models/gemini-1.5-flash')
                 
                 # Validate API key
                 if not settings.GEMINI_API_KEY or settings.GEMINI_API_KEY == 'your_gemini_api_key_here':

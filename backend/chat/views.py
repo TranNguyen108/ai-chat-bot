@@ -9,7 +9,7 @@ from .models import ChatSession, Message
 
 # Cấu hình Gemini API
 genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('models/gemini-1.5-flash')
 
 @csrf_exempt
 @require_http_methods(["POST"])
