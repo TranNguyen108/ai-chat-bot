@@ -100,30 +100,6 @@ SUPABASE_KEY = "<YOUR_SUPABASE_ANON_KEY>"
 
 ## 📂 Cấu trúc dự án
 
-```
-Di Hoc/
-├── backend/                    # Django backend
-│   ├── backend/               # Django settings
-│   ├── chatapp/               # Chat application
-│   │   ├── models.py         # Database models
-│   │   ├── views.py          # API views
-│   │   ├── urls.py           # URL routing
-│   │   └── admin.py          # Admin interface
-│   ├── manage.py
-│   └── .env                  # Environment variables
-├── frontend/                  # React frontend
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── Sidebar.jsx   # Sidebar: tạo, đổi tên, xoá conversation
-│   │   │   ├── ChatHeader.jsx
-│   │   │   ├── ChatInput.jsx
-│   │   │   ├── ChatMessage.jsx
-│   │   ├── App.jsx           # Main app component
-│   │   └── App.css           # Global styles
-│   └── package.json
-└── test_api.html             # API testing tool
-```
-
 ## 🎯 Cách sử dụng
 
 1. **Khởi động backend**: `python manage.py runserver`
@@ -134,4 +110,4 @@ Di Hoc/
 6. **Quản lý đoạn chat**: Đổi tên, xoá conversation trực tiếp trên Sidebar
 7. **Xem lịch sử**: Các cuộc trò chuyện được lưu tự động
 
-Enjoy chatting with AI! 🤖✨
+
