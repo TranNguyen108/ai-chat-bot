@@ -32,10 +32,11 @@ const ChatHeader = ({ title, onToggleSidebar, onUserClick, onLogout, notificatio
           {/* Nút toggle sidebar */}
           <button 
             onClick={onToggleSidebar} 
-            className="p-2 mr-2 text-gray-500 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
+            className="p-2 mr-4 text-gray-500 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500"
           >
             <Bars3Icon className="w-6 h-6" />
           </button>
+          
           <h2 className="text-lg font-semibold text-gray-900 truncate">
             {title}
           </h2>

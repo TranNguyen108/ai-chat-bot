@@ -1,6 +1,6 @@
 // src/App.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import Sidebar from './components/Sidebar';
 import ChatHeader from './components/ChatHeader';
@@ -13,8 +13,25 @@ import { SparklesIcon } from '@heroicons/react/24/outline';
 const App = () => {
   const [user, setUser] = useState(() => {
     const saved = localStorage.getItem('chatai_user');
-    return saved ? JSON.parse(saved) : null;
+    const parsedUser = saved ? JSON.parse(saved) : null;
+    console.log('App startup - Initial user from localStorage:', parsedUser);
+    return parsedUser;
   });
+
+  // Add debug function to window for testing
+  useEffect(() => {
+    window.debugUser = () => {
+      console.log('=== DEBUG USER FUNCTION ===');
+      console.log('localStorage chatai_user:', localStorage.getItem('chatai_user'));
+      console.log('Current user state:', user);
+      console.log('user && user.user_id:', user && user.user_id);
+      console.log('!user:', !user);
+      console.log('!user.user_id:', !user?.user_id);
+      console.log('Validation result:', (!user || !user.user_id));
+      return { user, validation: (!user || !user.user_id) };
+    };
+  }, [user]);
+
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversations, setConversations] = useState([]);
@@ -23,6 +40,9 @@ const App = () => {
   const [showUserPage, setShowUserPage] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareCode, setShareCode] = useState('');
+  const [isGroupChat, setIsGroupChat] = useState(false);
   const messagesEndRef = useRef(null);
 
   // MỚI: State để quản lý trạng thái của Sidebar
@@ -39,21 +59,37 @@ const App = () => {
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (user) fetchConversations();
-  }, [user]);
+    if (user && user.user_id) {
+      fetchConversations();
+    }
+  }, [user]); // Only when user changes
 
   useEffect(() => {
     if (user && activeConversationId) {
         fetchHistory();
-        const activeConv = conversations.find(c => c.id === activeConversationId);
-        if (activeConv) {
-            setCurrentTitle(activeConv.title);
-        }
     } else {
         setMessages([]);
         setCurrentTitle('New Chat');
+        setIsGroupChat(false);
     }
-  }, [user, activeConversationId]);
+  }, [user, activeConversationId]); // Only when user or activeConversationId changes
+
+  // Separate useEffect for updating title and group chat status when conversations or activeConversationId changes
+  useEffect(() => {
+    if (activeConversationId && conversations.length > 0) {
+      const activeConv = conversations.find(c => c.id === activeConversationId);
+      if (activeConv) {
+        if (currentTitle !== activeConv.title) {
+          setCurrentTitle(activeConv.title);
+        }
+        // Check if this is a group chat
+        const isShared = activeConv?.is_shared || false;
+        if (isShared !== isGroupChat) {
+          setIsGroupChat(isShared);
+        }
+      }
+    }
+  }, [activeConversationId, conversations]); // Remove isGroupChat and currentTitle from dependencies
 
   useEffect(() => {
     if (user) {
@@ -61,6 +97,16 @@ const App = () => {
     } else {
       localStorage.removeItem('chatai_user');
     }
+  }, [user]);
+
+  // Debug localStorage and user state
+  useEffect(() => {
+    console.log('=== USER DEBUG INFO ===');
+    console.log('localStorage.getItem("chatai_user"):', localStorage.getItem('chatai_user'));
+    console.log('Current user state:', user);
+    console.log('user?.user_id:', user?.user_id);
+    console.log('typeof user?.user_id:', typeof user?.user_id);
+    console.log('========================');
   }, [user]);
 
   useEffect(() => {
@@ -73,10 +119,23 @@ const App = () => {
         setNotifications([]);
       }
     };
+    
+    // Only fetch notifications once on mount
     fetchNotifications();
+    
+    // Set up interval to fetch notifications every 60 seconds instead of 30 to reduce server load
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
+    // Validate user before making API call
+    if (!user || !user.user_id) {
+      console.log('User not loaded yet, skipping fetchConversations');
+      return;
+    }
+    
+    console.log('Fetching conversations for user:', user.user_id);
     try {
       const res = await axios.get(`${API_BASE_URL}/conversations/${user.user_id}/`);
       const fetchedConversations = res.data.conversations || [];
@@ -86,29 +145,46 @@ const App = () => {
         setCurrentTitle(fetchedConversations[0].title || 'New Chat');
       }
     } catch (error) {
+      console.error('Error fetching conversations:', error);
       setConversations([]);
     }
-  };
+  }, [user]); // Remove activeConversationId dependency
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     if (!activeConversationId) return;
+    
+    // Validate user before making API call
+    if (!user || !user.user_id) {
+      console.log('User not loaded yet, skipping fetchHistory');
+      return;
+    }
+    
+    console.log('Fetching history for user:', user.user_id, 'conversation:', activeConversationId);
     setIsLoading(true);
     try {
       const res = await axios.get(`${API_BASE_URL}/history/${user.user_id}/${activeConversationId}/`);
+      console.log('API response history:', res.data.history);
       setMessages(res.data.history.map(msg => ({
         id: msg.id || Date.now() + Math.random(),
         content: msg.message,
         type: msg.role,
-        timestamp: msg.created_at
+        timestamp: msg.created_at,
+        user_name: msg.user_name // Đảm bảo user_name được lưu vào message
       })));
     } catch (error) {
       setMessages([]);
     } finally {
         setIsLoading(false);
     }
-  };
+  }, [user, activeConversationId]);
 
   const sendMessage = async (input) => {
+    // Validate user before making API call
+    if (!user || !user.user_id) {
+      console.error('User not loaded, cannot send message');
+      return;
+    }
+    
     // input: { message, media_url, media_type } hoặc string cũ
     let messageText = typeof input === 'string' ? input : (input.message || '');
     let media_url = typeof input === 'object' ? input.media_url : undefined;
@@ -134,7 +210,8 @@ const App = () => {
           id: Date.now(),
           content: 'Không thể tạo đoạn chat mới. Vui lòng thử lại.',
           type: 'ai',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          user_name: 'System'
         }]);
         return;
       }
@@ -146,7 +223,8 @@ const App = () => {
       type: 'user',
       timestamp: new Date().toISOString(),
       media_url,
-      media_type
+      media_type,
+      user_name: user.username || user.email || 'You' // Thêm tên user
     };
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
@@ -162,7 +240,8 @@ const App = () => {
           id: res.data.ai_message.id || Date.now() + 1,
           content: res.data.ai_message.content,
           type: 'ai',
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          user_name: 'AI Assistant'
         }]);
       }
     } catch (error) {
@@ -170,31 +249,49 @@ const App = () => {
         id: Date.now(),
         content: 'Sorry, there was an error processing your request. Please try again.',
         type: 'ai',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        user_name: 'System'
       }]);
     } finally {
       setIsLoading(false);
-      if(isNewChat) await fetchConversations();
+      if(isNewChat) {
+        // Only fetch conversations if it was a new chat to avoid unnecessary calls
+        try {
+          const res = await axios.get(`${API_BASE_URL}/conversations/${user.user_id}/`);
+          const fetchedConversations = res.data.conversations || [];
+          setConversations(fetchedConversations);
+        } catch (error) {
+          console.error('Error refreshing conversations after new chat:', error);
+        }
+      }
     }
   };
 
-  const startNewChat = () => {
+  const startNewChat = useCallback(() => {
     setActiveConversationId(null);
     setMessages([]);
     setCurrentTitle('New Chat');
     if (!isSidebarOpen) setIsSidebarOpen(true);
-  };
+  }, [isSidebarOpen]);
   
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     setUser(null);
     setMessages([]);
     setConversations([]);
     setActiveConversationId(null);
     setCurrentTitle('New Chat');
-  };
+  }, []);
 
-  const deleteConversationHistory = async (conversationId) => {
+  const deleteConversationHistory = useCallback(async (conversationId) => {
     if (!window.confirm('Bạn có chắc muốn xoá toàn bộ lịch sử chat của đoạn này?')) return;
+    
+    // Validate user before making API call
+    if (!user || !user.user_id) {
+      console.error('User not loaded, cannot delete conversation');
+      return;
+    }
+    
+    console.log('Deleting conversation for user:', user.user_id, 'conversation:', conversationId);
     try {
       await axios.delete(`${API_BASE_URL}/history/${user.user_id}/${conversationId}/`);
       
@@ -212,9 +309,15 @@ const App = () => {
     } catch (error) {
       alert('Xoá lịch sử chat thất bại!');
     }
-  };
+  }, [user, conversations, activeConversationId]);
 
-  const renameConversation = async (conversationId, newTitle) => {
+  const renameConversation = useCallback(async (conversationId, newTitle) => {
+    // Validate user before making API call
+    if (!user || !user.user_id) {
+      console.error('User not loaded, cannot rename conversation');
+      return;
+    }
+    
     try {
       await axios.patch(`${API_BASE_URL}/conversations/${user.user_id}/`, {
         conversation_id: conversationId,
@@ -228,7 +331,29 @@ const App = () => {
     } catch (error) {
       alert('Đổi tên đoạn chat thất bại!');
     }
-  };
+  }, [user, conversations, activeConversationId]);
+
+  const handleJoinChat = useCallback(async (conversationId) => {
+    // Refresh conversations and select the joined one
+    if (user && user.user_id) {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/conversations/${user.user_id}/`);
+        const fetchedConversations = res.data.conversations || [];
+        setConversations(fetchedConversations);
+        setActiveConversationId(conversationId);
+      } catch (error) {
+        console.error('Error refreshing conversations:', error);
+      }
+    }
+  }, [user]); // Only depend on user
+
+  const handleSelectConversation = useCallback((id) => {
+    setActiveConversationId(id);
+  }, []);
+
+  // Check if current conversation is shared
+  const currentConversation = conversations.find(c => c.id === activeConversationId);
+  const isSharedConversation = currentConversation?.is_shared || false;
 
   if (!user) {
     return <LoginRegister onAuth={setUser} />;
@@ -245,11 +370,16 @@ const App = () => {
         isSidebarOpen={isSidebarOpen}
         conversations={conversations}
         activeConversationId={activeConversationId}
-        onSelectConversation={(id) => setActiveConversationId(id)}
+        onSelectConversation={handleSelectConversation}
         onNewChat={startNewChat}
         onDeleteConversation={deleteConversationHistory}
         onRenameConversation={renameConversation}
+        onShareConversation={() => {}} // Handled in Sidebar component
+        onJoinChat={handleJoinChat}
+        user={user}
       />
+      {/* Debug: Log user object being passed to Sidebar */}
+      {console.log('App render - user passed to Sidebar:', user)}
       <main className="flex-1 flex flex-col transition-all duration-300">
         <ChatHeader
           title={currentTitle}
@@ -276,6 +406,7 @@ const App = () => {
                 <ChatMessage
                   key={message.id}
                   message={message}
+                  showUserName={true}
                 />
               ))}
               {isLoading && (
@@ -290,6 +421,39 @@ const App = () => {
           isLoading={isLoading}
         />
       </main>
+      
+      {/* Share Dialog */}
+      {shareDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Share Chat Room</h3>
+            <p className="text-gray-600 mb-4">Share this code with others to let them join your conversation:</p>
+            <div className="flex items-center gap-3 mb-4">
+              <input
+                type="text"
+                value={shareCode}
+                readOnly
+                className="flex-1 p-3 border border-gray-300 rounded-lg bg-gray-50 font-mono text-lg text-center"
+              />
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shareCode);
+                  alert('Đã copy mã chia sẻ!');
+                }}
+                className="bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Copy
+              </button>
+            </div>
+            <button
+              onClick={() => setShareDialogOpen(false)}
+              className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
